@@ -1,1 +1,12 @@
-".ccsproject" 
+*.ccsproject
+*.metadata
+*.jxbrowser.userdata
+*.cproject
+319double/.cproject
+319double/.launches/
+319double/.project
+319double/.settings/
+319double/Debug/
+319double/lnk_msp430f5529.cmd
+319double/targetConfigs/
+RemoteSystemsTempFiles/
