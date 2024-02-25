@@ -12,7 +12,7 @@ void loop() {
 
   Serial.println((float) R_ADC / 1023 * 10);
 
-  delay(1000000);  // 1 read per second
+  delay(1000);  // 1 read per second
 }
 
 
