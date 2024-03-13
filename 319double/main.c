@@ -5,8 +5,8 @@
 //#define     LED1                  BIT0                         //for P1.0 red LED
 //#define     LED2                  BIT7                         //for P4.7 green LED
 ////
-//#define     TXD                   BIT4                      // TXD on P4.4
-//#define     RXD                   BIT5                      // RXD on P4.5
+#define     TXD                   BIT4                      // TXD on P4.4
+#define     RXD                   BIT5                      // RXD on P4.5
 void main(void) {
     WDTCTL = WDTPW + WDTHOLD; // Stop WDT
 
@@ -36,22 +36,24 @@ void main(void) {
     P1IE = BIT3; // set up interrupt
     P1IES = BIT3; // interrupt occurs on falling edge
 
-    // set up timer
-    TA0CTL |= TASSEL__SMCLK; // increment every 1 microsec
-    TA0CCR0 = 0xFFFF; // overflow at 0xFFFF
-    TA0CTL |= TACLR; // clear TA0R
+    while (1) {
+        // set up timer
+        TA0CTL |= TASSEL__SMCLK; // increment every 1 microsec
+        TA0CCR0 = 0xFFFF; // overflow at 0xFFFF
+        TA0CTL |= TACLR; // clear TA0R
 
-    // Generate TRIGGER pulse
-    P6DIR |= BIT0;
-    P6OUT |= BIT0;
-    __delay_cycles(20);
-    P6OUT &= ~BIT0;
+        // Generate TRIGGER pulse
+        P6DIR |= BIT0;
+        P6OUT |= BIT0;
+        __delay_cycles(20);
+        P6OUT &= ~BIT0;
 
-    // start timer
-    TA0CTL |= MC__UP;
+        // start timer
+        TA0CTL |= MC__UP;
 
-    // await interrupts
-    _BIS_SR (LPM4_bits + GIE);
+        // await interrupts
+        _BIS_SR (LPM4_bits + GIE);
+    }
 
 
 }
@@ -62,7 +64,9 @@ void __attribute__ ((interrupt(PORT1_VECTOR))) PORT1_ISR(void) // Port 1 interru
 
       // read timer
       short x = TA0R;
-      UCA1TXBUF = x;  //Transmit time in timer;
+      UCA1TXBUF = x;  // Transmit time in timer
+
+      __bic_SR_register_on_exit (LPM4_bits);
 
       P1IFG &= ~BIT3; // Clear P1.1 IFG.If you don't, it just happens again.
    }
