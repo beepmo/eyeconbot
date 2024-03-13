@@ -1,7 +1,7 @@
 #include "msp430.h"
 void UARTSendArray(char *TxArray, char ArrayLength);
 //
-//static  char data;
+static int data;
 //#define     LED1                  BIT0                         //for P1.0 red LED
 //#define     LED2                  BIT7                         //for P4.7 green LED
 ////
@@ -77,9 +77,9 @@ void __attribute__ ((interrupt(PORT1_VECTOR))) PORT1_ISR(void) // Port 1 interru
    {
 
       // read timer
-      char* x = TA0R;
+      x = TA0R;
 
-      UARTSendArray(x,2);  // Transmit time in timer
+      UARTSendArray(&x,2);  // Transmit time in timer
 
       TA0CTL &= 0; // stop timer
 
