@@ -17,6 +17,8 @@ void main(void) {
     P1OUT &= ~LED1;
     P4OUT &= ~LED2;
 
+*/
+
     // Configure UART
     P4DIR |= TXD;
     P4OUT |= TXD;
@@ -29,7 +31,6 @@ void main(void) {
     UCA1CTL1 &= ~UCSWRST; // Initialize USCI state machine
     UCA1IE = UCRXIE;  // Enable  RX interrupt
 
-*/
     // set up ECHO in p1.3
     P1DIR &= ~BIT3;
     P1IE = BIT3; // set up interrupt
@@ -40,7 +41,7 @@ void main(void) {
     TA0CCR0 = 0xFFFF; // overflow at 0xFFFF
     TA0CTL |= TACLR; // clear TA0R
 
-    // Generate trigger PULSE
+    // Generate TRIGGER pulse
     P6DIR |= BIT0;
     P6OUT |= BIT0;
     __delay_cycles(20);
@@ -61,7 +62,7 @@ void __attribute__ ((interrupt(PORT1_VECTOR))) PORT1_ISR(void) // Port 1 interru
 
       // read timer
       short x = TA0R;
-//      UCA1TXBUF = x;  //Transmit time in timer;
+      UCA1TXBUF = x;  //Transmit time in timer;
 
       P1IFG &= ~BIT3; // Clear P1.1 IFG.If you don't, it just happens again.
    }
