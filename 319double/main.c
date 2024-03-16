@@ -1,13 +1,15 @@
 #include "msp430.h"
 void UARTSendArray(char *TxArray, char ArrayLength);
 //
-static int data;
+//static int data;
+static char x;
 //#define     LED1                  BIT0                         //for P1.0 red LED
 //#define     LED2                  BIT7                         //for P4.7 green LED
 ////
 #define     TXD                   BIT4                      // TXD on P4.4
 #define     RXD                   BIT5                      // RXD on P4.5
 void main(void) {
+
     WDTCTL = WDTPW + WDTHOLD; // Stop WDT
 
     /*
@@ -39,8 +41,9 @@ while (1) {
     P1IES = BIT3; // interrupt occurs on falling edge
 
     // set up timer
-    TA0CTL |= TASSEL__SMCLK; // increment every 1 microsec
-    TA0CCR0 = 0xFFFF; // overflow at 0xFFFF
+    TA0CTL |= TASSEL__ACLK; // Counts per sec: 32768 / 2 = 16384
+    TA0EX0 |= 0b001;
+    TA0CCR0 = 0x00FF; // overflow at 0x00FF
 
     TA0CTL |= TACLR; // clear TA0R
 
@@ -60,26 +63,29 @@ while (1) {
 
 }
 
-void UARTSendArray(char *TxArray,  char ArrayLength){
- // Send number of bytes Specified in ArrayLength
- // It is necessary to send two bytes for each integer
-
-    while(ArrayLength--){ // Loop until StringLength == 0 and post decrement
-        while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
-
-        UCA1TXBUF = *TxArray; //Write the character at the location specified by the pointer
-        TxArray++; //Increment the TxString pointer to point to the next character
-    }
-}
+//void UARTSendArray(char *TxArray,  char ArrayLength){
+// // Send number of bytes Specified in ArrayLength
+// // It is necessary to send two bytes for each integer
+//
+//    while(ArrayLength--){ // Loop until StringLength == 0 and post decrement
+//        while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+//
+//        UCA1TXBUF = *TxArray; //Write the character at the location specified by the pointer
+//        TxArray++; //Increment the TxString pointer to point to the next character
+//    }
+//}
 
 
 void __attribute__ ((interrupt(PORT1_VECTOR))) PORT1_ISR(void) // Port 1 interrupt service routine
    {
 
-      // read timer
-      x = TA0R;
+//      // read timer
+//      x = TA0R;
+//
+//      UARTSendArray(&x,2);  // Transmit time in timer
 
-      UARTSendArray(&x,2);  // Transmit time in timer
+      x = (char) TA0R;
+      UCA1TXBUF = x;
 
       TA0CTL &= 0; // stop timer
 
