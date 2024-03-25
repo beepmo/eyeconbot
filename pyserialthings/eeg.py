@@ -3,6 +3,8 @@ import time
 import csv
 import matplotlib.pyplot as plt
 
+csv_savename = "eeg.csv"
+
 com = "COM5"
 baud = 9600
 
@@ -34,10 +36,18 @@ try:
                 
                 bucket += 1
                 if bucket == 250:
-                    plt.plot(times,signal,'.')
+                    plt.plot(times[max(-len(times),-2000):],signal[max(-len(times),-2000):],'.')
                     plt.show()
                     bucket = 0
                 
 except KeyboardInterrupt:
-    plt.plot(signal)
-    plt.show()
+    print("Collection stopped - saving to CSV...")
+    startcsv = time.time()
+    with open(csv_savename, "w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        rows = zip(times, signal)
+        for row in rows:
+            writer.writerow(row)
+    endcsv = time.time()
+    print("Data saved to "+csv_savename)
+    print("Took "+str(endcsv-startcsv)+" s")
