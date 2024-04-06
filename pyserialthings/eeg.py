@@ -11,6 +11,7 @@ baud = 9600
 times = []
 signal = []
 bucket = 0 # make new plot when bucket fills
+plt.figure()
 
 try:
     t0 = time.time()
@@ -35,9 +36,10 @@ try:
                 signal.append(volts)
                 
                 bucket += 1
-                if bucket == 250:
+                if bucket == 100:
+                    plt.pause(0.01)# wait for plot to update (INCREASE IF PLOT ISN'T UPDATING PROPERLY)
+                    plt.clf()
                     plt.plot(times[max(-len(times),-2000):],signal[max(-len(times),-2000):],'.')
-                    plt.show()
                     bucket = 0
                 
 except KeyboardInterrupt:
