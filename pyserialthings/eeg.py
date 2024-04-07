@@ -27,7 +27,10 @@ try:
         
         while x.isOpen() == True:
             
+            x.write(b'd')
+            time.sleep(0.01)
             data = x.read(2)
+            
             if len(data) > 0:
                 t = time.time() - t0
                 times.append(t)
@@ -36,20 +39,6 @@ try:
                 ADC12 = int.from_bytes(data, "little")
                 print(ADC12)
                 volts = ADC12 / 4095 * 3.3
-                
-                if volts < 0.1 and time.time() - tp > 10:
-                    tp = time.time()
-                    if flick == 0:
-                        print('\n go right \n')
-                        x.write(b'r')
-                        flick = 1
-                    elif flick == 1:
-                        print('\n go left \n')
-                        x.write(b'l')
-                        flick = 0
-                    x.reset_input_buffer()
-                    x.reset_output_buffer() 
-                
                 signal.append(volts)
                 
                 bucket += 1

@@ -1,6 +1,7 @@
 #include <msp430.h> 
 
 static short x; // store ADC12MEM0
+
 void UARTConfigure(void);
 void UARTSendArray(char *TxArray, char ArrayLength);
 void Blink_Target_LED(void);
@@ -24,6 +25,7 @@ int main(void)
 	ADC12MCTL0 = ADC12INCH_0;
 	P6SEL |= BIT0;
 
+
 //	// set up PWM on P1.2
 //	P1DIR |= BIT2; // output on bit 2
 //    P1SEL |= BIT2; // PWM selected on bit 2
@@ -33,26 +35,7 @@ int main(void)
 //    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
 
 
-    _BIS_SR (GIE);
-//    while (1) {
-//                  // bababum
-//             TA0CCR1 = TA0CCR1 + 1;
-//              }
-
-//    __delay_cycles(20000); // wait for 0.2 sec, buffer instruction between BIS and next
-//    __delay_cycles(20000); // wait for 0.2 sec, buffer instruction between BIS and next
-
-
-	while (1) {
-
-        ADC12CTL0 |= ADC12SC; // start sampling
-
-        while (ADC12CTL1 & ADC12BUSY); // poll while busy
-
-        // store ADC12MEM0 register (16 bits long, 4 bits empty) in 16-bit short
-        x = ADC12MEM0;
-        UARTSendArray(&x, 2);
-    }
+    _BIS_SR (LPM0_bits | GIE);
 
 	return 0;
 }
@@ -87,26 +70,34 @@ void UARTSendArray(char *TxArray,  char ArrayLength){
  * Interrupt service routine upon receiving a byte
  * This ISR controls its own flag; no need to lower it manually.
  * However, don't let it call functions, or it won't return control properly to main.
+ */
+void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
+    char data = UCA1RXBUF;
 
-void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)
-{
+    switch(data){
+        case 'd':
+            ADC12CTL0 |= ADC12SC; // start sampling
 
+            while (ADC12CTL1 & ADC12BUSY); // poll while busy
 
-//    char data = UCA1RXBUF;                               //received character goes to data
-//
-//   switch(data){
+            x = ADC12MEM0;
+            char* ptr = &x;
+
+            while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+            UCA1TXBUF = *ptr;
+
+            while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+            UCA1TXBUF = *(ptr + 1);
+
 //     case 'r':
 //         TA0CCR1 = TA0CCR1 - EPSILON;
 //     break;
 //     case 'l':
 //         TA0CCR1 = TA0CCR1 + EPSILON;
 //     break;
-// }
-
-
-
+    }
 }
- */
+
 
 // Function to Blink the LED
 void Blink_Target_LED(void)
