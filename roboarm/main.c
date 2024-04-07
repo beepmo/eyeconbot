@@ -1,13 +1,15 @@
 #include <msp430.h> 
 
-static short x;
-
-
-void takeInput(void);
+static short x; // store ADC12MEM0
 void UARTConfigure(void);
 void UARTSendArray(char *TxArray, char ArrayLength);
 void Blink_Target_LED(void);
 
+#define CENTER 1500 // 12 o'clock
+#define R1 1300 // 1 o'clock
+#define L1 1700 // 11 o'clock
+#define EPSILON 5 // increment
+#define DT 20000 // cycles per increment (0.02s)
 
 int main(void)
 {
@@ -33,11 +35,21 @@ int main(void)
     P1SEL |= BIT2; // PWM selected on bit 2
     TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
     TA0CCTL1 = OUTMOD_7; // periods start on high
+    TA0CCR1 = CENTER; // start servo on center
+    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
 
-	_BIS_SR (GIE);
+
+    _BIS_SR (GIE);
+//    while (1) {
+//                  // bababum
+//             TA0CCR1 = TA0CCR1 + 1;
+//              }
+
+//    __delay_cycles(20000); // wait for 0.2 sec, buffer instruction between BIS and next
+//    __delay_cycles(20000); // wait for 0.2 sec, buffer instruction between BIS and next
+
 
 	while (1) {
-	    _BIS_SR (GIE); // keep interrupt enable
 
         ADC12CTL0 |= ADC12SC; // start sampling
 
@@ -87,7 +99,6 @@ void UARTSendArray(char *TxArray,  char ArrayLength){
  */
 void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)
 {
-    Blink_Target_LED();
 
 
     char data = UCA1RXBUF;                               //received character goes to data
@@ -95,35 +106,32 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)
    switch(data){
      case 'r':
      {
-         TA0CCR1 = 1300;
-         TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;
+         if (TA0CCR1 > R1) {
+             while (TA0CCR1 > R1) {
+                 TA0CCR1 = TA0CCR1 - EPSILON;
+                 __delay_cycles(200000); // wait for 0.2 sec
+             }
+         } else {
+             // move another part!
+         }
      }
      break;
      case 'l':
      {
-         TA0CCR1 = 1500;
-         TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;
+         if (TA0CCR1 < L1) {
+              while (TA0CCR1 < L1) {
+                  TA0CCR1 = TA0CCR1 + EPSILON;
+                  __delay_cycles(200000); // wait for 0.2 sec
+              }
+          } else {
+              // move another part!
+          }
      }
      break;
  }
 
 
 
-}
-
-void takeInput(void) {
-    while (1) {
-        ADC12CTL0 |= ADC12SC; // start sampling
-
-        while (ADC12CTL1 & ADC12BUSY); // poll while busy
-
-        // store ADC12MEM0 register (16 bits long, 4 bits empty) in 16-bit short
-        x = ADC12MEM0;
-        UARTSendArray(&x, 2);
-
-        // LED on
-        P1OUT |= BIT0;
-    }
 }
 
 
