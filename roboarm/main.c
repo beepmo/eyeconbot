@@ -1,19 +1,19 @@
 #include <msp430.h> 
 
 static short x;
-void roboarm(void);
+
+
+void takeInput(void);
 void UARTConfigure(void);
 void UARTSendArray(char *TxArray, char ArrayLength);
 void Blink_Target_LED(void);
+
 
 int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 
 	UARTConfigure();
-	
-	int data[2]={1023, 235};
-	UARTSendArray(data, 4);
 
 	// set up ADC12 on P6.0
 	ADC12CTL0 = ADC12SHT02 + ADC12ON;
@@ -22,21 +22,39 @@ int main(void)
 	ADC12MCTL0 = ADC12INCH_0;
 	P6SEL |= BIT0;
 
-	while (1) {
-	    ADC12CTL0 |= ADC12SC; // start sampling
+	// set up LO+, LO- on P4.1,P4.2
+	P4DIR &= ~BIT1;
+	P4DIR &= ~BIT2;
+	P1DIR |= BIT0; // LED 1
+	P4DIR |= BIT7; // LED 2
 
-	    while (ADC12CTL1 & ADC12BUSY); // poll while busy
+	// set up PWM on P1.2
+	P1DIR |= BIT2; // output on bit 2
+    P1SEL |= BIT2; // PWM selected on bit 2
+    TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
+    TA0CCTL1 = OUTMOD_7; // periods start on high
+
+	_BIS_SR (GIE);
+
+	while (1) {
+	    _BIS_SR (GIE); // keep interrupt enable
+
+        ADC12CTL0 |= ADC12SC; // start sampling
+
+        while (ADC12CTL1 & ADC12BUSY); // poll while busy
 
         // store ADC12MEM0 register (16 bits long, 4 bits empty) in 16-bit short
-	    x = ADC12MEM0;
-	    UARTSendArray(&x, 2);
+        x = ADC12MEM0;
+        UARTSendArray(&x, 2);
 
-	}
+        // LED on
+        P1OUT |= BIT0;
+    }
 
 	return 0;
 }
 
-void UARTConfigure() {
+void UARTConfigure(void) {
     /* Configure UART */
     UCA1CTL1 = UCSWRST; //Recommended to place USCI in reset first
     P4SEL |= BIT4 + BIT5;
@@ -62,19 +80,52 @@ void UARTSendArray(char *TxArray,  char ArrayLength){
      }
 }
 
-void roboarm() {
-    P1DIR |= BIT2; // output on bit 2
-    P1SEL |= BIT2; // PWM selected on bit 2
+/*
+ * Interrupt service routine upon receiving a byte
+ * This ISR controls its own flag; no need to lower it manually.
+ * However, don't let it call functions, or it won't return control properly to main.
+ */
+void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)
+{
+    Blink_Target_LED();
 
-    TA0CCR0 = 512;
 
-    TA0CCR1 = 512;
-    TA0CCTL1 = OUTMOD_7;
+    char data = UCA1RXBUF;                               //received character goes to data
 
-    TA0CTL = TASSEL_2 + MC_1 + TAIE + ID_0;
+   switch(data){
+     case 'r':
+     {
+         TA0CCR1 = 1300;
+         TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;
+     }
+     break;
+     case 'l':
+     {
+         TA0CCR1 = 1500;
+         TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;
+     }
+     break;
+ }
 
-    _bis_SR_register(LPM0_bits + GIE);
+
+
 }
+
+void takeInput(void) {
+    while (1) {
+        ADC12CTL0 |= ADC12SC; // start sampling
+
+        while (ADC12CTL1 & ADC12BUSY); // poll while busy
+
+        // store ADC12MEM0 register (16 bits long, 4 bits empty) in 16-bit short
+        x = ADC12MEM0;
+        UARTSendArray(&x, 2);
+
+        // LED on
+        P1OUT |= BIT0;
+    }
+}
+
 
 // Function to Blink the LED
 void Blink_Target_LED(void)
@@ -84,4 +135,6 @@ void Blink_Target_LED(void)
     __delay_cycles(200000); // wait for 0.2 sec
     P1OUT &= ~BIT0; // Turn OFF LED on MSP430
     __delay_cycles(200000); // wait for 0.2 sec
+    P1OUT |= BIT0; // Turn ON LED on MSP430
+        __delay_cycles(200000); // wait for 0.2 sec
 }
