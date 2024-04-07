@@ -24,19 +24,13 @@ int main(void)
 	ADC12MCTL0 = ADC12INCH_0;
 	P6SEL |= BIT0;
 
-	// set up LO+, LO- on P4.1,P4.2
-	P4DIR &= ~BIT1;
-	P4DIR &= ~BIT2;
-	P1DIR |= BIT0; // LED 1
-	P4DIR |= BIT7; // LED 2
-
-	// set up PWM on P1.2
-	P1DIR |= BIT2; // output on bit 2
-    P1SEL |= BIT2; // PWM selected on bit 2
-    TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
-    TA0CCTL1 = OUTMOD_7; // periods start on high
-    TA0CCR1 = CENTER; // start servo on center
-    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
+//	// set up PWM on P1.2
+//	P1DIR |= BIT2; // output on bit 2
+//    P1SEL |= BIT2; // PWM selected on bit 2
+//    TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
+//    TA0CCTL1 = OUTMOD_7; // periods start on high
+//    TA0CCR1 = CENTER; // start servo on center
+//    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
 
 
     _BIS_SR (GIE);
@@ -58,9 +52,6 @@ int main(void)
         // store ADC12MEM0 register (16 bits long, 4 bits empty) in 16-bit short
         x = ADC12MEM0;
         UARTSendArray(&x, 2);
-
-        // LED on
-        P1OUT |= BIT0;
     }
 
 	return 0;
@@ -96,44 +87,26 @@ void UARTSendArray(char *TxArray,  char ArrayLength){
  * Interrupt service routine upon receiving a byte
  * This ISR controls its own flag; no need to lower it manually.
  * However, don't let it call functions, or it won't return control properly to main.
- */
+
 void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)
 {
 
 
-    char data = UCA1RXBUF;                               //received character goes to data
-
-   switch(data){
-     case 'r':
-     {
-         if (TA0CCR1 > R1) {
-             while (TA0CCR1 > R1) {
-                 TA0CCR1 = TA0CCR1 - EPSILON;
-                 __delay_cycles(200000); // wait for 0.2 sec
-             }
-         } else {
-             // move another part!
-         }
-     }
-     break;
-     case 'l':
-     {
-         if (TA0CCR1 < L1) {
-              while (TA0CCR1 < L1) {
-                  TA0CCR1 = TA0CCR1 + EPSILON;
-                  __delay_cycles(200000); // wait for 0.2 sec
-              }
-          } else {
-              // move another part!
-          }
-     }
-     break;
- }
+//    char data = UCA1RXBUF;                               //received character goes to data
+//
+//   switch(data){
+//     case 'r':
+//         TA0CCR1 = TA0CCR1 - EPSILON;
+//     break;
+//     case 'l':
+//         TA0CCR1 = TA0CCR1 + EPSILON;
+//     break;
+// }
 
 
 
 }
-
+ */
 
 // Function to Blink the LED
 void Blink_Target_LED(void)

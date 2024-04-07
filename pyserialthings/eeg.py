@@ -17,6 +17,7 @@ flick = 0
 
 try:
     t0 = time.time()
+    tp = t0
     with serial.Serial(com, baud, timeout = 0.1) as x:
         
         # flush
@@ -36,7 +37,8 @@ try:
                 print(ADC12)
                 volts = ADC12 / 4095 * 3.3
                 
-                if volts < 0.1:
+                if volts < 0.1 and time.time() - tp > 10:
+                    tp = time.time()
                     if flick == 0:
                         print('\n go right \n')
                         x.write(b'r')
@@ -47,7 +49,6 @@ try:
                         flick = 0
                     x.reset_input_buffer()
                     x.reset_output_buffer() 
-                    time.sleep(0.5)
                 
                 signal.append(volts)
                 
