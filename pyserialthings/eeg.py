@@ -27,26 +27,39 @@ try:
         
         while x.isOpen() == True:
             
-            x.write(b'd')
-            time.sleep(0.01)
-            data = x.read(2)
+            # x.write(b'd')
+            # time.sleep(0.01)
+            # data = x.read(2)
             
-            if len(data) > 0:
-                t = time.time() - t0
-                times.append(t)
+            # if len(data) > 0:
+            #     t = time.time() - t0
+            #     times.append(t)
                 
-                # read integer ADC12MEM0 from bytes: little-endian, unsigned
-                ADC12 = int.from_bytes(data, "little")
-                print(ADC12)
-                volts = ADC12 / 4095 * 3.3
-                signal.append(volts)
+            #     # read integer ADC12MEM0 from bytes: little-endian, unsigned
+            #     ADC12 = int.from_bytes(data, "little")
+            #     print(ADC12)
+            #     volts = ADC12 / 4095 * 3.3
+            #     signal.append(volts)
                 
-                bucket += 1
-                if bucket == 100:
-                    plt.pause(0.1)# wait for plot to update (INCREASE IF PLOT ISN'T UPDATING PROPERLY)
-                    plt.clf()
-                    plt.plot(times[max(-len(times),-2000):],signal[max(-len(times),-2000):],'.')
-                    bucket = 0
+            #     bucket += 1
+            #     if bucket == 100:
+            #         plt.pause(0.1)# wait for plot to update (INCREASE IF PLOT ISN'T UPDATING PROPERLY)
+            #         plt.clf()
+            #         plt.plot(times[max(-len(times),-2000):],signal[max(-len(times),-2000):],'.')
+            #         bucket = 0
+                
+            # command = input()
+            # print(f'writing {command}')
+            # x.write(bytes(command,'utf-8'))
+            x.write(b'r')
+            print('on!')
+            time.sleep(5)
+            
+            x.write(b'l')
+            print('off!')
+            time.sleep(5)
+            
+
                 
 except KeyboardInterrupt:
     print("Collection stopped - saving to CSV...")

@@ -26,15 +26,6 @@ int main(void)
 	P6SEL |= BIT0;
 
 
-//	// set up PWM on P1.2
-//	P1DIR |= BIT2; // output on bit 2
-//    P1SEL |= BIT2; // PWM selected on bit 2
-//    TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
-//    TA0CCTL1 = OUTMOD_7; // periods start on high
-//    TA0CCR1 = CENTER; // start servo on center
-//    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
-
-
     _BIS_SR (LPM0_bits | GIE);
 
 	return 0;
@@ -52,20 +43,6 @@ void UARTConfigure(void) {
     UCA1IE = UCRXIE;  // Enable  RX interrupt
 }
 
-void UARTSendArray(char *TxArray,  char ArrayLength){
-     // Send number of bytes Specified in ArrayLength in the array at using the  UART
-     // Example usage: UARTSendArray("Hello", 5);
-     // int data[2]={1023, 235};
-     // UARTSendArray(data, 4); // Note because the UART transmits bytes it is necessary to send two bytes for each integer hence the data length is twice the array length
-
-    while(ArrayLength--){ // Loop until StringLength == 0 and post decrement
-    while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
-
-     UCA1TXBUF = *TxArray; //Write the character at the location specified by the pointer
-     TxArray++; //Increment the TxString pointer to point to the next character
-     }
-}
-
 /*
  * Interrupt service routine upon receiving a byte
  * This ISR controls its own flag; no need to lower it manually.
@@ -73,6 +50,10 @@ void UARTSendArray(char *TxArray,  char ArrayLength){
  */
 void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
     char data = UCA1RXBUF;
+
+    Blink_Target_LED();
+
+    TA0CCR1 = 10000;
 
     switch(data){
         case 'd':
@@ -88,13 +69,26 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
 
             while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
             UCA1TXBUF = *(ptr + 1);
+        break;
 
-//     case 'r':
-//         TA0CCR1 = TA0CCR1 - EPSILON;
-//     break;
-//     case 'l':
-//         TA0CCR1 = TA0CCR1 + EPSILON;
-//     break;
+        case 'r':
+
+            //   set up PWM on P1.2
+            P1DIR |= BIT2; // output on bit 2
+            P1SEL |= BIT2; // PWM selected on bit 2
+            TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
+            TA0CCTL1 = OUTMOD_7; // periods start on high
+            TA0CCR1 = 10000; // start servo on center
+            TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
+            __delay_cycles(2000000);
+            TA0CTL = 0;
+
+        break;
+
+        case 'l':
+            TA0CTL = 0; // PWM off
+
+        break;
     }
 }
 
