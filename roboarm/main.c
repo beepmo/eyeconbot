@@ -25,6 +25,13 @@ int main(void)
 	ADC12MCTL0 = ADC12INCH_0;
 	P6SEL |= BIT0;
 
+	//   set up PWM on P1.2
+    P1DIR |= BIT2; // output on bit 2
+    P1SEL |= BIT2; // PWM selected on bit 2
+    TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
+    TA0CCTL1 = OUTMOD_7; // periods start on high
+    TA0CCR1 = 1500; // start servo on center
+
 
     _BIS_SR (LPM0_bits | GIE);
 
@@ -51,8 +58,6 @@ void UARTConfigure(void) {
 void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
     char data = UCA1RXBUF;
 
-    TA0CCR1 = 10000;
-
     switch(data){
         case 'd':
             ADC12CTL0 |= ADC12SC; // start sampling
@@ -70,20 +75,18 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
 
         case 'r':
 
-            //   set up PWM on P1.2
-            P1DIR |= BIT2; // output on bit 2
-            P1SEL |= BIT2; // PWM selected on bit 2
-            TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
-            TA0CCTL1 = OUTMOD_7; // periods start on high
-            TA0CCR1 = 10000; // start servo on center
+            TA0CCR1 = TA0CCR1 + 10;
             TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
-            __delay_cycles(2000000);
+            __delay_cycles(100000);
             TA0CTL = 0;
 
         break;
 
         case 'l':
-            TA0CTL = 0; // PWM off
+            TA0CCR1 = TA0CCR1 + 10;
+            TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
+            __delay_cycles(100000);
+            TA0CTL = 0;
 
         break;
     }

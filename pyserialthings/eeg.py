@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 csv_savename = "eeg.csv"
+lefts_csv = "lefts.csv"
+rights_csv = "rights.csv"
 
 com = "COM5"
 baud = 9600
@@ -13,7 +15,7 @@ baud = 9600
 times = []
 signal = []
 
-# helper data structure to smooth data
+# helpers to smooth data
 group = []
 TSEP = 0.3
 VSEP = 0.01
@@ -24,7 +26,20 @@ p0, p1, p2 = 0, -1, -1
 i0, i1 = 0, 0
 WINDOW = 0.6
 ACCEPT = 0.03
-MOVE = 0.06
+MOVE = 0.08
+
+# roboarm
+QUIET = 2 # only one activation within quiet time 2s
+lefts = []
+rights = []
+rcursor = 0
+lcursor = 0
+
+last = 0 # store last activation
+REPS = 10
+SERVOTIME = 0.1 + 0.001 # (s). drive for five 20 ms periods, then sleep for 1000 microprocessor cycles
+TA0CCR1 = 1500 # keep track of TA0CCR1 register
+JERK = 10 # change in TA0CCR1
 
 
 try:
@@ -116,39 +131,65 @@ try:
                     plt.clf()
                     plt.plot(times[max(-len(signal),-50):],signal[max(-len(signal),-50):],'.')
                     
-                    if abs(i1) > ACCEPT and abs(i0) > ACCEPT:
+                    
+                    if times[p0] - last > QUIET and \
+                        abs(i1) > ACCEPT and abs(i0) > ACCEPT:
                         # take convolution
-                        if i1 - i0 > MOVE:
-                            # down up
-                            print('right')
-                            plt.axvline(times[p0],color='r')
-                        elif i0 - i1 > MOVE:
+                        
+                        if i0 - i1 > MOVE:
                             # up down
                             print('left')
-                            plt.axvline(times[p0],color='b')
+                            lefts.append(times[p0])
+                            last = times[p0]
+                            
+                            for i in range(REPS):
+                                x.write(b'l')
+                                TA0CCR1 += JERK;
+                                time.sleep(SERVOTIME)
+                        
+                        elif i1 - i0 > MOVE:
+                            # down up
+                            print('right')
+                            rights.append(times[p0])
+                            last = times[p0]
+                            
+                            for i in range(REPS):
+                                x.write(b'r')
+                                TA0CCR1 -= JERK;
+                                time.sleep(SERVOTIME)
+                            
+                        
                     
+                    leftbound = times[max(-len(signal),-50)]
+                    for t in rights[rcursor:]:
+                        if t < leftbound:
+                            rcursor += 1
+                        else:
+                            plt.axvline(t,color='r')
+                    for t in lefts[lcursor:]:
+                        if t < leftbound:
+                            lcursor += 1
+                        else:
+                            plt.axvline(t,color='b')
                     plt.show()
-
-
-            
-            # x.write(b'r')
-            # print('on!')
-            # time.sleep(5)
-            
-            # x.write(b'l')
-            # print('off!')
-            # time.sleep(5)
-            
 
                 
 except KeyboardInterrupt:
-    print("Collection stopped - saving to CSV...")
-    startcsv = time.time()
+
     with open(csv_savename, "w", newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         rows = zip(times, signal)
         for row in rows:
             writer.writerow(row)
-    endcsv = time.time()
     print("Data saved to "+csv_savename)
-    print("Took "+str(endcsv-startcsv)+" s")
+    
+    with open(lefts_csv, "w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        for l in lefts:
+            writer.writerow([l])
+    
+    with open(rights_csv, "w", newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        for r in rights:
+            writer.writerow([r])
+    
