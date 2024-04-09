@@ -25,9 +25,9 @@ BASE = 1.632
 p0, p1, p2 = 0, -1, -1
 i0, i1 = 0, 0
 WINDOW = 0.6
-ACCEPT = 0.05
-MOVEL = 0.15
-MOVER = 0.15
+ACCEPT = 0.1
+MOVEL = 0.11
+MOVER = 0.11
 convs = []
 tconvs = []
 i0s = []
@@ -36,7 +36,7 @@ i1s = []
 ti1s = []
 
 # roboarm
-QUIET = 0.1 # only one activation within quiet time 0.1s
+QUIET = 2 # only one activation within quiet time 0.1s
 lefts = []
 rights = []
 rcursor = 0
@@ -89,24 +89,14 @@ try:
                     signal.append(point)
                     group = [volts]
                     times.append(t)
-                
-                   
-                    
-                    
-                    
+
                     
                     # slide convolution
                     if times[p1] - times[p0] < WINDOW:
                         # first window isn't grown up yet, and second window isn't born
                         print(f'growing first window')
                         p1 += 1
-                        p2 += 1
-                    
-                        # add v*dt to integral i0
-                        
-                        dt = times[p1] - times[p1 - 1]
-                        i0 += signal[p1] * dt
-                        
+                        p2 += 1   
                         
                         
                     elif times[p2] - times[p1] < WINDOW:
@@ -114,11 +104,7 @@ try:
                         
                         # grow second window
                         p2 += 1
-                        
-                        # add v*dt to integral i1
-                        dt = times[p2] - times[p2 - 1]
-                        i1 += signal[p2] * dt
-                        
+                                             
                     else:
                         # mature sliding window
                         print(f'\n mature sliding window')
@@ -126,26 +112,18 @@ try:
                         print(f'times[p1] - times[p0] {times[p1] - times[p0]}')
                         print(f'times[p2] - times[p1] {times[p2] - times[p1]}')
                         
-                        p0 += 1
-                        # update integral i0
-                        dt = times[p0] - times[p0 - 1]
-                        i0 -= dt * signal[p0 - 1]
-                        
+                        p0 += 1  
                         p1 += 1
-                        dt = times[p1] - times[p1 - 1]
-                        i0 += signal[p1] * dt
-                        
-                        i1 -= signal[p1] * dt
-                        
                         p2 += 1
-                        dt = times[p2] - times[p2 - 1]
-                        i1 += signal[p2] * dt
+                        
+                        i0 = np.trapz(signal[p0:p1],times[p0:p1])
+                        i1 = np.trapz(signal[p1:p2],times[p1:p2])
                         
                         # save mature i0, i1
                         i0s.append(i0)
                         ti0s.append(times[p0])
                         i1s.append(i1)
-                        ti1s.append(times[p1])
+                        ti1s.append(times[p0])
                         
                         print(f'i0 {i0}')
                         print(f'i1 {i1}')
@@ -153,20 +131,21 @@ try:
                         
                      # plot completed cluster
                     plt.clf()
-                    plt.plot(times[max(-len(signal),-50):],signal[max(-len(signal),-50):],'.',label='data')
+                    plt.plot(times[max(-len(signal),-50):],signal[max(-len(signal),-50):],'-',label='data')
                     plt.plot(ti0s[max(-len(i0s),-50):],i0s[max(-len(i0s),-50):],'-',label='i0')
                     plt.plot(ti1s[max(-len(i1s),-50):],i1s[max(-len(ti1s),-50):],'-',label='i1')
                     
                     
-                    if times[p0] - last > QUIET and \
-                        abs(i1) > ACCEPT and abs(i0) > ACCEPT:
+                    if times[p0] - last > QUIET and (abs(i1) > ACCEPT or abs(i0) > ACCEPT):
                         # take convolution
                         conv = i0 - i1
+                        print(f'\ntimes[p0] - last = {times[p0] - last}\nconvolution taken \n')
+                        last = times[p0]
                     else:
                         conv = 0
                     convs.append(conv)
                     tconvs.append(times[p0])
-                    # plt.plot(tconvs[max(-len(signal),-50):],convs[max(-len(signal),-50):],'.',label='conv')
+                    plt.plot(tconvs[max(-len(signal),-50):],convs[max(-len(signal),-50):],'.',label='conv')
                     plt.legend()
                         
                     # if conv > MOVEL:
