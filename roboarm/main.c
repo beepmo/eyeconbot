@@ -31,7 +31,9 @@ int main(void)
     TA0CCR0 = 20000; // period: 20000 1MHz counts = 20ms
     TA0CCTL1 = OUTMOD_7; // periods start on high
     TA0CCR1 = 1500; // start servo on center
-
+    TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
+    __delay_cycles(1000000);
+    TA0CTL = 0;
 
     _BIS_SR (LPM0_bits | GIE);
 
@@ -83,7 +85,7 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
         break;
 
         case 'l':
-            TA0CCR1 = TA0CCR1 + 10;
+            TA0CCR1 = TA0CCR1 - 10;
             TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
             __delay_cycles(100000);
             TA0CTL = 0;

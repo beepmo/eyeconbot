@@ -17,7 +17,7 @@ signal = []
 
 # helpers to smooth data
 group = []
-TSEP = 0.3
+TSEP = 0.1
 VSEP = 0.01
 BASE = 1.632
 
@@ -25,11 +25,18 @@ BASE = 1.632
 p0, p1, p2 = 0, -1, -1
 i0, i1 = 0, 0
 WINDOW = 0.6
-ACCEPT = 0.03
-MOVE = 0.08
+ACCEPT = 0.05
+MOVEL = 0.15
+MOVER = 0.15
+convs = []
+tconvs = []
+i0s = []
+ti0s = []
+i1s = []
+ti1s = []
 
 # roboarm
-QUIET = 2 # only one activation within quiet time 2s
+QUIET = 0.1 # only one activation within quiet time 0.1s
 lefts = []
 rights = []
 rcursor = 0
@@ -40,6 +47,8 @@ REPS = 10
 SERVOTIME = 0.1 + 0.001 # (s). drive for five 20 ms periods, then sleep for 1000 microprocessor cycles
 TA0CCR1 = 1500 # keep track of TA0CCR1 register
 JERK = 10 # change in TA0CCR1
+MAX = 1800
+MIN = 1200
 
 
 try:
@@ -63,8 +72,9 @@ try:
                 # read integer ADC12MEM0 from bytes: little-endian, unsigned
                 ADC12 = int.from_bytes(data, "little")
                 volts = ADC12 / 4095 * 3.3
-                print(ADC12)
-                print(t)
+                
+                
+                
                 
                 if (len(times) > 0 and t - times[-1] < TSEP) \
                 and (len(group) > 0 and (np.abs(volts - group[-1]) < VSEP)) \
@@ -72,19 +82,18 @@ try:
                     # add to cluster
                     group.append(volts)
                 else:
-                    print('new group')
                     # complete old cluster, reset new cluster
-                    signal.append(np.mean(group) - BASE)
+                    point = np.mean(group) - BASE
+                    # if abs(point) > 0.1:
+                    #     point *= 2
+                    signal.append(point)
                     group = [volts]
                     times.append(t)
                 
                    
                     
-                    print(f'p0, p1, p2 {p0, p1, p2}')
-                    print(f'times[p1] - times[p0] {times[p1] - times[p0]}')
-                    print(f'times[p2] - times[p1] {times[p2] - times[p1]}')
-                    print(f'i0 {i0}')
-                    print(f'i1 {i1}')
+                    
+                    
                     
                     # slide convolution
                     if times[p1] - times[p0] < WINDOW:
@@ -98,6 +107,8 @@ try:
                         dt = times[p1] - times[p1 - 1]
                         i0 += signal[p1] * dt
                         
+                        
+                        
                     elif times[p2] - times[p1] < WINDOW:
                         print('growing second window')
                         
@@ -110,7 +121,10 @@ try:
                         
                     else:
                         # mature sliding window
-                        print('mature sliding window')
+                        print(f'\n mature sliding window')
+                        print(f'p0, p1, p2 {p0, p1, p2}')
+                        print(f'times[p1] - times[p0] {times[p1] - times[p0]}')
+                        print(f'times[p2] - times[p1] {times[p2] - times[p1]}')
                         
                         p0 += 1
                         # update integral i0
@@ -127,36 +141,59 @@ try:
                         dt = times[p2] - times[p2 - 1]
                         i1 += signal[p2] * dt
                         
+                        # save mature i0, i1
+                        i0s.append(i0)
+                        ti0s.append(times[p0])
+                        i1s.append(i1)
+                        ti1s.append(times[p1])
+                        
+                        print(f'i0 {i0}')
+                        print(f'i1 {i1}')
+                        
+                        
                      # plot completed cluster
                     plt.clf()
-                    plt.plot(times[max(-len(signal),-50):],signal[max(-len(signal),-50):],'.')
+                    plt.plot(times[max(-len(signal),-50):],signal[max(-len(signal),-50):],'.',label='data')
+                    plt.plot(ti0s[max(-len(i0s),-50):],i0s[max(-len(i0s),-50):],'-',label='i0')
+                    plt.plot(ti1s[max(-len(i1s),-50):],i1s[max(-len(ti1s),-50):],'-',label='i1')
                     
                     
                     if times[p0] - last > QUIET and \
                         abs(i1) > ACCEPT and abs(i0) > ACCEPT:
                         # take convolution
+                        conv = i0 - i1
+                    else:
+                        conv = 0
+                    convs.append(conv)
+                    tconvs.append(times[p0])
+                    # plt.plot(tconvs[max(-len(signal),-50):],convs[max(-len(signal),-50):],'.',label='conv')
+                    plt.legend()
                         
-                        if i0 - i1 > MOVE:
-                            # up down
-                            print('left')
-                            lefts.append(times[p0])
-                            last = times[p0]
-                            
-                            for i in range(REPS):
-                                x.write(b'l')
-                                TA0CCR1 += JERK;
-                                time.sleep(SERVOTIME)
+                    # if conv > MOVEL:
+                    #     # up down
+                    #     print('left')
+                    #     lefts.append(times[p0])
+                    #     last = times[p0]
                         
-                        elif i1 - i0 > MOVE:
-                            # down up
-                            print('right')
-                            rights.append(times[p0])
-                            last = times[p0]
-                            
-                            for i in range(REPS):
-                                x.write(b'r')
-                                TA0CCR1 -= JERK;
-                                time.sleep(SERVOTIME)
+                    #     for i in range(REPS):
+                    #         if TA0CCR1 > MAX: break
+                    #         x.write(b'l')
+                    #         TA0CCR1 += JERK;
+                    #         print(f'TA0CCR1 {TA0CCR1}')
+                    #         time.sleep(SERVOTIME)
+                    
+                    # elif -conv > MOVER:
+                    #     # down up
+                    #     print('right')
+                    #     rights.append(times[p0])
+                    #     last = times[p0]
+                        
+                    #     for i in range(REPS):
+                    #         if TA0CCR1 < MIN: break
+                    #         x.write(b'r')
+                    #         TA0CCR1 -= JERK;
+                    #         print(f'TA0CCR1 {TA0CCR1}')
+                    #         time.sleep(SERVOTIME)
                             
                         
                     
@@ -166,11 +203,13 @@ try:
                             rcursor += 1
                         else:
                             plt.axvline(t,color='r')
+                            plt.axvline(t + 2*WINDOW,color='k')
                     for t in lefts[lcursor:]:
                         if t < leftbound:
                             lcursor += 1
                         else:
                             plt.axvline(t,color='b')
+                            plt.axvline(t + 2*WINDOW,color='k')
                     plt.show()
 
                 
