@@ -51,15 +51,12 @@ void UARTConfigure(void) {
 void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
     char data = UCA1RXBUF;
 
-    Blink_Target_LED();
-
     TA0CCR1 = 10000;
 
     switch(data){
         case 'd':
             ADC12CTL0 |= ADC12SC; // start sampling
 
-            while (ADC12CTL1 & ADC12BUSY); // poll while busy
 
             x = ADC12MEM0;
             char* ptr = &x;
