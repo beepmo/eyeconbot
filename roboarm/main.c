@@ -79,7 +79,7 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
 
             TA0CCR1 = TA0CCR1 + 10;
             TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
-            __delay_cycles(100000);
+            __delay_cycles(80000);
             TA0CTL = 0;
 
         break;
@@ -87,7 +87,7 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void) {
         case 'l':
             TA0CCR1 = TA0CCR1 - 10;
             TA0CTL = TASSEL__SMCLK + MC_1 + TAIE + ID_0;  // begin output
-            __delay_cycles(100000);
+            __delay_cycles(80000);
             TA0CTL = 0;
 
         break;

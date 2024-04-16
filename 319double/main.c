@@ -1,102 +1,139 @@
+/* Example code demonstrating the use of the hardware UART on the
+ * MSP430F5529 to receive and transmit data back to a host
+ * computer over the USB connection on the MSP430 launchpad.
+ * Note: After programming it is necessary to stop debugging and
+ * reset the uC before connecting the terminal program to
+ * transmit and receive characters.
+ * This demo will turn on the Red LED if an R is sent and turn it
+ * off if a r is sent.
+ * Similarly G and g will turn on and off the green LED
+ * It also transmits the received character back to the terminal.
+ *To use cmd on Windows as terminal open the command prompt
+ * Enter    powershell
+ * Enter    $port= new-Object System.IO.Ports.SerialPort
+ * COM3,9600,None,8,one
+ * if COM3 is the port used
+ * Than you can use commands:
+ * $port.open()
+ * $port.WriteLine("some string")
+ * $port.ReadLine()
+ * $port.Close()
+ * One can use a free Windows terminal Tera Term
+ */
+
 #include "msp430.h"
 void UARTSendArray(char *TxArray, char ArrayLength);
-//
-//static int data;
-static char x;
-//#define     LED1                  BIT0                         //for P1.0 red LED
-//#define     LED2                  BIT7                         //for P4.7 green LED
-////
+
+static  char data;
+#define     LED1                  BIT0                         //for P1.0 red LED
+#define     LED2                  BIT7                         //for P4.7 green LED
+
 #define     TXD                   BIT4                      // TXD on P4.4
 #define     RXD                   BIT5                      // RXD on P4.5
-void main(void) {
+void main(void)
 
-    WDTCTL = WDTPW + WDTHOLD; // Stop WDT
+{
+ WDTCTL = WDTPW + WDTHOLD; // Stop WDT
 
-    /*
-    //  set up LEDs
-    P1DIR |= LED1;
-    P4DIR |= LED2;
-    P1OUT &= ~LED1;
-    P4OUT &= ~LED2;
+  P1DIR |= LED1;
+  P4DIR |= LED2;
+  P1OUT |= LED1;     //LED1 red on
+  P4OUT &= ~LED2;    //LED2 green off
+  P4DIR |= TXD;
+  P4OUT |= TXD;
 
-*/
 
-while (1) {
 
-    // Configure UART
-    P4DIR |= TXD;
-    P4OUT |= TXD;
-    UCA1CTL1 = UCSWRST; //Recommended to place USCI in reset first
-    P4SEL |= BIT4 + BIT5;
-    UCA1CTL1 |= UCSSEL_2; // Use SMCLK
-    UCA1BR0 = 109; // Set baud rate to 9600 with 1.048MHz clock (Data Sheet 36.3.13)
-    UCA1BR1 = 0; // Set baud rate to 9600 with 1.048MHz clock
-    UCA1MCTL = UCBRS_2; // Modulation UCBRSx = 2
-    UCA1CTL1 &= ~UCSWRST; // Initialize USCI state machine
-    UCA1IE = UCRXIE;  // Enable  RX interrupt
+  /* next  line to use internal calibrated 1.048MHz clock: */
 
-    // set up ECHO in p1.3
-    P1DIR &= ~BIT3;
-    P1IE = BIT3; // set up interrupt
-    P1IES = BIT3; // interrupt occurs on falling edge
+  TA0CTL = TASSEL_2 + MC_1 + TAIE +ID_3;            // Timer A control set to SMCLK, 1MHz and count up mode MC_1
 
-    // set up timer
-    TA0CTL |= TASSEL__ACLK; // Counts per sec: 32768 / 2 = 16384
-    TA0EX0 |= 0b001;
-    TA0CCR0 = 0x00FF; // overflow at 0x00FF
 
-    TA0CTL |= TACLR; // clear TA0R
 
-    // Generate TRIGGER pulse
-    P6DIR |= BIT0;
-    P6OUT |= BIT0;
-    __delay_cycles(20);
-    P6OUT &= ~BIT0;
+ /* Configure UART */
+  UCA1CTL1 = UCSWRST; //Recommended to place USCI in reset first
+  P4SEL |= BIT4 + BIT5;
+  UCA1CTL1 |= UCSSEL_2; // Use SMCLK
+  UCA1BR0 = 109; // Set baud rate to 9600 with 1.048MHz clock (Data Sheet 36.3.13)
+  UCA1BR1 = 0; // Set baud rate to 9600 with 1.048MHz clock
+  UCA1MCTL = UCBRS_2; // Modulation UCBRSx = 2
+  UCA1CTL1 &= ~UCSWRST; // Initialize USCI state machine
+  UCA1IE = UCRXIE;  // Enable  RX interrupt
 
-    // start timer
-    TA0CTL |= MC__UP;
+// _BIS_SR (LPM4_bits + GIE);    //Turn on interrupts and go into the lowest
+                                    //power mode (the program stops here)
+  _BIS_SR (GIE);
+     while (1) {
+              // bababum
+         TA0CCR1 = TA0CCR1 + 1;
+          }
 
-    // await interrupts
-    _BIS_SR (LPM4_bits + GIE);
-}
+  //while(1) {  while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+             // UCA1TXBUF = 0b000001001000;   //H
+             // while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+             // UCA1TXBUF = 0b00100000;   //space
+             // _delay_cycles (2000000); //This function introduces 0.5 s delay
+          //  }
 
 
 }
 
-//void UARTSendArray(char *TxArray,  char ArrayLength){
-// // Send number of bytes Specified in ArrayLength
-// // It is necessary to send two bytes for each integer
-//
-//    while(ArrayLength--){ // Loop until StringLength == 0 and post decrement
-//        while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
-//
-//        UCA1TXBUF = *TxArray; //Write the character at the location specified by the pointer
-//        TxArray++; //Increment the TxString pointer to point to the next character
-//    }
-//}
+// Echo back RXed character, confirm TX buffer is ready first
 
 
-void __attribute__ ((interrupt(PORT1_VECTOR))) PORT1_ISR(void) // Port 1 interrupt service routine
-   {
+  void __attribute__ ((interrupt(USCI_A1_VECTOR))) UCIV1_ISR(void)    //interrupt routine for received data interrupt
 
-//      // read timer
-//      x = TA0R;
-//
-//      UARTSendArray(&x,2);  // Transmit time in timer
-
-      x = (char) TA0R;
-      UCA1TXBUF = x;
-
-      TA0CTL &= 0; // stop timer
-
-      TA0CTL |= TACLR; // clear TA0R
-
-      __delay_cycles(1000000);
-
-      __bic_SR_register_on_exit (LPM4_bits);
-
-      P1IFG &= ~BIT3; // Clear P1.3 IFG.If you don't, it just happens again.
-   }
+{
 
 
+data = UCA1RXBUF;                               //received character goes to data
+UARTSendArray("Received command: ", 18); //"Received command" is printed, 18 is the number of characters in the printed arrey
+UARTSendArray(&data, 1);       //received character is printed
+UARTSendArray("\n\r", 2);      //new line and line return
 
+switch(data){
+ case 'R':
+ {
+ P1OUT |= BIT0;
+ __delay_cycles(1000000);
+ }
+ break;
+ case 'r':
+ {
+ P1OUT &= ~BIT0;
+ }
+ break;
+ case 'G':
+ {
+ P4OUT |= BIT7;
+ }
+ break;
+ case 'g':
+ {
+ P4OUT &= ~BIT7;
+ }
+ break;
+ default:
+ {
+ UARTSendArray("Unknown Command: ", 17);
+ UARTSendArray(&data, 1);
+ UARTSendArray("\n\r", 2);
+ }
+ break;
+ }
+ //   _delay_cycles (2000000); //This function introduces 2 s delay
+}
+
+void UARTSendArray(char *TxArray,  char ArrayLength){
+ // Send number of bytes Specified in ArrayLength in the array at using the  UART
+ // Example usage: UARTSendArray("Hello", 5);
+ // int data[2]={1023, 235};
+ // UARTSendArray(data, 4); // Note because the UART transmits bytes it is necessary to send two bytes for each integer hence the data length is twice the array length
+
+while(ArrayLength--){ // Loop until StringLength == 0 and post decrement
+while (! (UCA1IFG & UCTXIFG)); // wait for TX buffer to be ready for new data
+
+ UCA1TXBUF = *TxArray; //Write the character at the location specified by the pointer
+ TxArray++; //Increment the TxString pointer to point to the next character
+ }
+}
