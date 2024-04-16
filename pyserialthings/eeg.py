@@ -25,9 +25,9 @@ BASE = 1.632
 p0, p1, p2 = 0, -1, -1
 i0, i1 = 0, 0
 WINDOW = 0.6
-ACCEPT = 0.1
-MOVEL = 0.11
-MOVER = 0.11
+ACCEPT = 0.03
+MOVEL = 0.04
+MOVER = 0.04
 convs = []
 tconvs = []
 i0s = []
@@ -43,8 +43,8 @@ rcursor = 0
 lcursor = 0
 
 last = 0 # store last activation
-REPS = 10
-SERVOTIME = 0.1 + 0.001 # (s). drive for five 20 ms periods, then sleep for 1000 microprocessor cycles
+REPS = 15
+SERVOTIME = 0.08 + 0.0001 # (s). drive for three 20 ms periods, then sleep for 100 microprocessor cycles
 TA0CCR1 = 1500 # keep track of TA0CCR1 register
 JERK = 10 # change in TA0CCR1
 MAX = 1800
@@ -146,33 +146,35 @@ try:
                     convs.append(conv)
                     tconvs.append(times[p0])
                     plt.plot(tconvs[max(-len(signal),-50):],convs[max(-len(signal),-50):],'.',label='conv')
+                    plt.axhline(MOVEL)
+                    plt.axhline(-MOVER)
                     plt.legend()
                         
-                    # if conv > MOVEL:
-                    #     # up down
-                    #     print('left')
-                    #     lefts.append(times[p0])
-                    #     last = times[p0]
+                    if conv > MOVEL:
+                        # up down
+                        print('left')
+                        lefts.append(times[p0])
+                        last = times[p0]
                         
-                    #     for i in range(REPS):
-                    #         if TA0CCR1 > MAX: break
-                    #         x.write(b'l')
-                    #         TA0CCR1 += JERK;
-                    #         print(f'TA0CCR1 {TA0CCR1}')
-                    #         time.sleep(SERVOTIME)
+                        for i in range(REPS):
+                            if TA0CCR1 > MAX: break
+                            x.write(b'l')
+                            TA0CCR1 += JERK;
+                            print(f'TA0CCR1 {TA0CCR1}')
+                            time.sleep(SERVOTIME)
                     
-                    # elif -conv > MOVER:
-                    #     # down up
-                    #     print('right')
-                    #     rights.append(times[p0])
-                    #     last = times[p0]
+                    elif -conv > MOVER:
+                        # down up
+                        print('right')
+                        rights.append(times[p0])
+                        last = times[p0]
                         
-                    #     for i in range(REPS):
-                    #         if TA0CCR1 < MIN: break
-                    #         x.write(b'r')
-                    #         TA0CCR1 -= JERK;
-                    #         print(f'TA0CCR1 {TA0CCR1}')
-                    #         time.sleep(SERVOTIME)
+                        for i in range(REPS):
+                            if TA0CCR1 < MIN: break
+                            x.write(b'r')
+                            TA0CCR1 -= JERK;
+                            print(f'TA0CCR1 {TA0CCR1}')
+                            time.sleep(SERVOTIME)
                             
                         
                     
